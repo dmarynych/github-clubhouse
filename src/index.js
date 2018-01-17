@@ -28,12 +28,17 @@ export async function clubhouseStoryToGithubIssue(clubhouseStoryURL, githubRepoU
   return issue
 }
 
+function githubUserToClubhouseUserId(githubUser, clubhouseUsers) {
+  const mapping = require('../users-mapping.json');
+
+  const clubhouseUsername = mapping[githubUser.login]
+  const clubhouseUser = clubhouseUsers.find(user => user.username === clubhouseUsername)
+
+  return clubhouseUser.id;
+}
 export async function githubIssueToClubhouseStory(githubIssueURL, clubhouseProject, options = {}) {
   _assertOption('githubToken', options)
   _assertOption('clubhouseToken', options)
-
-  const users = await listUsers(options.clubhouseToken)
-  const {id: authorId} = users[0]
 
   const projects = await listProjects(options.clubhouseToken)
   const {id: projectId} = projects.find(project => project.name === clubhouseProject)
@@ -42,7 +47,10 @@ export async function githubIssueToClubhouseStory(githubIssueURL, clubhouseProje
   const issue = await getIssue(options.githubToken, owner, repo, issueNumber)
   const issueComments = await getCommentsForIssue(options.githubToken, owner, repo, issueNumber)
 
-  const unsavedStory = _issueToStory(authorId, projectId, issue, issueComments)
+  const users = await listUsers(options.clubhouseToken)
+  const authorId = githubUserToClubhouseUserId(issue.user, users)
+
+  const unsavedStory = _issueToStory(authorId, projectId, issue, issueComments, users)
   const story = createStory(options.clubhouseToken, unsavedStory)
 
   return story
@@ -56,21 +64,22 @@ function _assertOption(name, options) {
 
 /* eslint-disable camelcase */
 
-function _issueToStory(authorId, projectId, issue, issueComments) {
+function _issueToStory(authorId, projectId, issue, issueComments, users) {
   return {
     project_id: projectId,
     name: issue.title,
     description: issue.body,
-    comments: _presentGithubComments(authorId, issueComments),
+    comments: _presentGithubComments(authorId, issueComments, users),
     created_at: issue.created_at,
     updated_at: issue.updated_at,
     external_id: issue.url,
   }
 }
 
-function _presentGithubComments(authorId, issueComments) {
+function _presentGithubComments(authorId, issueComments, users) {
+  console.info(issueComments);
   return issueComments.map(issueComment => ({
-    author_id: authorId,
+    author_id: githubUserToClubhouseUserId(issueComment.user, users),
     text: `**[Comment from GitHub user @${issueComment.user.login}:]** ${issueComment.body}`,
     created_at: issueComment.created_at,
     updated_at: issueComment.updated_at,
