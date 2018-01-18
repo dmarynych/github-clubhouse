@@ -29,12 +29,12 @@ export async function clubhouseStoryToGithubIssue(clubhouseStoryURL, githubRepoU
 }
 
 function githubUserToClubhouseUserId(githubUser, clubhouseUsers) {
-  const mapping = require('../users-mapping.json');
+  const mapping = require('../users-mapping.json')
 
   const clubhouseUsername = mapping[githubUser.login]
   const clubhouseUser = clubhouseUsers.find(user => user.username === clubhouseUsername)
 
-  return clubhouseUser.id;
+  return clubhouseUser.id
 }
 export async function githubIssueToClubhouseStory(githubIssueURL, clubhouseProject, options = {}) {
   _assertOption('githubToken', options)
@@ -48,9 +48,8 @@ export async function githubIssueToClubhouseStory(githubIssueURL, clubhouseProje
   const issueComments = await getCommentsForIssue(options.githubToken, owner, repo, issueNumber)
 
   const users = await listUsers(options.clubhouseToken)
-  const authorId = githubUserToClubhouseUserId(issue.user, users)
 
-  const unsavedStory = _issueToStory(authorId, projectId, issue, issueComments, users)
+  const unsavedStory = _issueToStory(users, projectId, issue, issueComments)
   const story = createStory(options.clubhouseToken, unsavedStory)
 
   return story
@@ -64,20 +63,19 @@ function _assertOption(name, options) {
 
 /* eslint-disable camelcase */
 
-function _issueToStory(authorId, projectId, issue, issueComments, users) {
+function _issueToStory(users, projectId, issue, issueComments) {
   return {
     project_id: projectId,
     name: issue.title,
     description: issue.body,
-    comments: _presentGithubComments(authorId, issueComments, users),
+    comments: _presentGithubComments(users, issueComments),
     created_at: issue.created_at,
     updated_at: issue.updated_at,
     external_id: issue.url,
   }
 }
 
-function _presentGithubComments(authorId, issueComments, users) {
-  console.info(issueComments);
+function _presentGithubComments(users, issueComments) {
   return issueComments.map(issueComment => ({
     author_id: githubUserToClubhouseUserId(issueComment.user, users),
     text: `**[Comment from GitHub user @${issueComment.user.login}:]** ${issueComment.body}`,
