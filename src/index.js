@@ -30,9 +30,11 @@ export async function clubhouseStoryToGithubIssue(clubhouseStoryURL, githubRepoU
 
 function githubUserToClubhouseUserId(githubUser, clubhouseUsers) {
   const mapping = require('../users-mapping.json')
-
+  console.log('users mapping');
+  console.log(mapping);
   const clubhouseUsername = mapping[githubUser.login]
   const clubhouseUser = clubhouseUsers.find(user => user.username === clubhouseUsername)
+  console.log('mapping user gh:', githubUser.login, 'clubhouse:', clubhouseUser.username);
 
   return clubhouseUser.id
 }
@@ -46,12 +48,12 @@ export async function githubIssueToClubhouseStory(githubIssueURL, clubhouseProje
   const {owner, repo, issueNumber} = parseGithubIssueURL(githubIssueURL)
   const issue = await getIssue(options.githubToken, owner, repo, issueNumber)
   const issueComments = await getCommentsForIssue(options.githubToken, owner, repo, issueNumber)
-
+  console.log('exporting issue ', issue.id);
   const users = await listUsers(options.clubhouseToken)
 
   const unsavedStory = _issueToStory(users, projectId, issue, issueComments)
   const story = createStory(options.clubhouseToken, unsavedStory)
-
+  console.log('------------');
   return story
 }
 
